@@ -137,6 +137,58 @@ python test_planner.py "HDFC Flexi Cap Fund"   # must still pass
 
 ---
 
+---
+
+### Issue #5 — commits were being authored by the wrong GitHub account
+
+**What.** `git config --global user.email` was
+`109962171+LalitKishore22@users.noreply.github.com`, but the repo was
+headed for `github.com/Lalit-Kishore`. Checked the GitHub API: these
+are two genuinely separate accounts.
+
+| Account | ID | Created | Public repos |
+|---|---|---|---|
+| LalitKishore22 | 109962171 | 2022-07-25 | 2 |
+| Lalit-Kishore | 162315192 | 2024-03-05 | 1 |
+
+**Why it matters.** GitHub attributes a commit to an account by
+matching the **author email**, not by who pushed it. Pushing to
+Lalit-Kishore while authoring as LalitKishore22 gives you commits that
+show a plain name with no avatar, no profile link, and *no square on
+the Lalit-Kishore contribution graph*. It fails silently — the push
+succeeds and looks fine until you notice the graph stayed empty.
+
+**Fix.** Repo-local identity (global left alone, so other repos are
+unaffected):
+
+```bash
+git config user.name  "Lalit Kishore C R"
+git config user.email "162315192+Lalit-Kishore@users.noreply.github.com"
+```
+
+The two existing commits were already authored wrongly, so their
+authorship was rewritten with `git filter-branch --env-filter` before
+any push. Safe to rewrite here precisely because nothing was pushed
+yet — after a push this becomes a force-push that breaks every clone.
+
+**Takeaway.** The `ID+username@users.noreply.github.com` form is the
+right email to commit with: it attributes correctly without publishing
+your real address in a public git history. Verify attribution with
+`git log --pretty=format:"%an <%ae>"` *before* the first push.
+
+---
+
+### Repo set up
+
+- `git init -b main`, two commits (code, then docs) rather than one
+  "initial commit" blob — the history should read as work, not a dump.
+- `.gitignore` covers `.env`, `__pycache__`, venvs, editor dirs.
+  Confirmed with `git check-ignore -v .env` before committing, not
+  assumed.
+- Remote set to
+  `https://github.com/Lalit-Kishore/deepdive-research-agent.git`.
+  Not yet pushed — the GitHub repo has to be created first.
+
 ## 2026-07-28 — Week 1 started
 
 Created `app/state.py` (full `ResearchState` shape defined upfront —
