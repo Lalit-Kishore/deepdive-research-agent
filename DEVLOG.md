@@ -225,6 +225,69 @@ about it as two categories, not one: **secrets** (keys, `.env`) and
 TODOs). The second category is the one that gets missed, because
 nothing about it looks dangerous.
 
+---
+
+### Issue #7 — `git pull` after a history rewrite tried to resurrect the purged file
+
+**What.** After the force-push in issue #6, a `git pull` was run. It
+left the repo mid-merge with conflicts in `DEVLOG.md` and `README.md`,
+and — much worse — `PROJECT_CONTEXT.md` staged as added again:
+
+```
+$ git status -sb
+## main...origin/main
+AA DEVLOG.md
+A  PROJECT_CONTEXT.md      <-- the file that was just purged
+AA README.md
+```
+
+**Why it happened.** `git pull` is `git fetch` + `git merge`. The pull
+ran while the remote still pointed at the **old, pre-purge** history
+(`19d4d6b`), so git did exactly what it was asked: merge that old
+branch into the clean one. The old branch still contained
+`PROJECT_CONTEXT.md`, and a file that exists on one side of a merge
+and not the other is not a conflict — it is an **addition**. Git added
+it back silently while flagging only the two genuinely-conflicting
+files.
+
+`.gitignore` does not save you here. It only stops *untracked* files
+from being added; it has no say over a file arriving through a merge.
+
+**Why committing that merge would have been the real damage.** The
+merge commit would have listed `19d4d6b` as a parent. That single
+pointer makes every purged commit reachable again — so the file would
+come back *and* the whole history the rewrite deleted would be
+relinked. The force-push would have been undone by a merge.
+
+**Fix.** Nothing in the merge was wanted; it only carried the old
+version:
+
+```bash
+cp PROJECT_CONTEXT.md /tmp/backup      # abort deletes it - it is not in HEAD
+git merge --abort                      # back to clean HEAD, conflicts gone
+cp /tmp/backup PROJECT_CONTEXT.md      # restore as a local, ignored file
+
+git reflog expire --expire=now --all   # drop the dangling old commits
+git gc --prune=now                     # so nothing can re-merge them
+```
+
+Then verified rather than assumed:
+
+```bash
+git log --all --oneline -- PROJECT_CONTEXT.md   # empty
+git rev-parse main origin/main                  # identical - nothing to push
+```
+
+**Takeaway.** After rewriting history, **never `git pull`** — your
+local branch is the source of truth and the remote is the thing that
+is wrong. `pull` merges the remote *into* you, which is backwards.
+Push, and if you must sync afterwards use
+`git fetch && git reset --hard origin/main`.
+
+Also: `git merge --abort` restores the working tree to HEAD, so any
+file that only exists because of the merge is deleted. Back up before
+aborting if the file matters locally.
+
 ### Repo set up
 
 - `git init -b main`, two commits (code, then docs) rather than one
