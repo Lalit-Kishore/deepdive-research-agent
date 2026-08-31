@@ -1,0 +1,12 @@
+# Pinned to major versions verified working on 2026-08-31.
+# LangGraph/LangChain went 1.x — the old >=0.2 floors in this file
+# would happily install a 0.x that no longer matches this code.
+langgraph>=1.2,<2
+langchain-core>=1.5,<2
+langchain-google-genai>=4.3,<5
+python-dotenv>=1.0
+
+# Week 2 (researcher tools) — uncomment as they get wired in
+# langchain-tavily>=0.2
+# yfinance>=0.2
+# requests>=2.31
