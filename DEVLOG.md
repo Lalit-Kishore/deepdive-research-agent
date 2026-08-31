@@ -178,6 +178,53 @@ your real address in a public git history. Verify attribution with
 
 ---
 
+---
+
+### Issue #6 — private working notes got committed and pushed to a public repo
+
+**What.** `PROJECT_CONTEXT.md` — personal planning notes, not code —
+was committed in the first commit and pushed. It was public for a
+short window before being caught.
+
+**Why it happened.** It sat in the project root next to the source, so
+`git add -A` swept it up with everything else. `.gitignore` covered
+`.env` and `__pycache__` — the *obvious* secrets — but nothing had
+asked the broader question: which files here are for me, and which are
+for the public?
+
+**Fix.** Three parts, and all three are needed:
+
+```bash
+# 1. stop tracking it, but keep it on disk
+git rm --cached PROJECT_CONTEXT.md
+
+# 2. make it un-committable by accident
+echo "PROJECT_CONTEXT.md" >> .gitignore
+
+# 3. erase it from every commit that ever contained it
+git filter-branch -f --index-filter   'git rm --cached --ignore-unmatch -q PROJECT_CONTEXT.md'   --prune-empty -- --all
+git reflog expire --expire=now --all && git gc --prune=now
+```
+
+Then `git push --force-with-lease`. Verified with
+`git log --all --oneline -- PROJECT_CONTEXT.md` returning nothing.
+
+**Why step 3 is not optional.** Deleting a file in a *new* commit
+leaves every previous commit intact — the content stays one
+`git show <old-sha>:<file>` away, forever. A deletion commit is not a
+removal; it is an announcement of where to look.
+
+**Why `--force-with-lease` over `--force`.** It refuses the push if
+the remote moved since your last fetch, so you can't silently
+overwrite work you haven't seen. Plain `--force` overwrites
+unconditionally. Prefer the lease every time.
+
+**Takeaway.** Write `.gitignore` *before* the first commit, and think
+about it as two categories, not one: **secrets** (keys, `.env`) and
+**private-but-not-secret** (planning notes, scratch files, personal
+TODOs). The second category is the one that gets missed, because
+nothing about it looks dangerous.
+
 ### Repo set up
 
 - `git init -b main`, two commits (code, then docs) rather than one
@@ -185,9 +232,11 @@ your real address in a public git history. Verify attribution with
 - `.gitignore` covers `.env`, `__pycache__`, venvs, editor dirs.
   Confirmed with `git check-ignore -v .env` before committing, not
   assumed.
-- Remote set to
-  `https://github.com/Lalit-Kishore/deepdive-research-agent.git`.
-  Not yet pushed — the GitHub repo has to be created first.
+- Remote: `https://github.com/Lalit-Kishore/deepdive-research-agent.git`,
+  public. Pushed, then force-pushed once to drop issue #6.
+- `LalitKishore22` retired; the Lalit-Kishore identity is now set
+  in `--global` config, so new repos get it by default and the
+  repo-local override was removed as redundant.
 
 ## 2026-07-28 — Week 1 started
 
