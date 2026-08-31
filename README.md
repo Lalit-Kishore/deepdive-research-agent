@@ -79,8 +79,7 @@ deepdive/
 │   └── graph.py      wires nodes into the StateGraph
 ├── test_planner.py   CLI smoke test for the planner
 ├── THEORY.md         the concepts behind each thing built here
-├── DEVLOG.md         running log of issues hit and how they were fixed
-└── PROJECT_CONTEXT.md
+└── DEVLOG.md         running log of issues hit and how they were fixed
 ```
 
 ## Why these choices

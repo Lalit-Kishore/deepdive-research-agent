@@ -1,6 +1,9 @@
 # Secrets
 .env
 
+# Private working notes - career/planning context, not for the public repo
+PROJECT_CONTEXT.md
+
 # Python
 __pycache__/
 *.py[cod]
