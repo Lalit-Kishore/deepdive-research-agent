@@ -17,11 +17,15 @@ from app.state import ResearchState
 from app.planner import build_planner_node
 
 
-def build_graph():
-    """Wire the nodes together and return a compiled, runnable graph."""
+def build_graph(planner_llm=None):
+    """Wire the nodes together and return a compiled, runnable graph.
+
+    planner_llm is injectable for tests; production passes nothing and
+    each node builds its own model from app.llm.
+    """
     builder = StateGraph(ResearchState)
 
-    builder.add_node("planner", build_planner_node())
+    builder.add_node("planner", build_planner_node(planner_llm))
 
     builder.add_edge(START, "planner")
     builder.add_edge("planner", END)

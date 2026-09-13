@@ -6,6 +6,10 @@ langchain-core>=1.5,<2
 langchain-google-genai>=4.3,<5
 python-dotenv>=1.0
 
+# Direct import in app/planner.py (PlannerOutput). It also arrives as a
+# transitive dep of langchain-core, but anything we `import` gets declared.
+pydantic>=2.13,<3
+
 # Week 2 (researcher tools) — uncomment as they get wired in
 # langchain-tavily>=0.2
 # yfinance>=0.2

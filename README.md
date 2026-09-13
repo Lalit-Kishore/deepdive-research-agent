@@ -44,7 +44,7 @@ linear chain cannot express that loop.
 
 | Week | Scope | State |
 |---|---|---|
-| 1 | Planner agent, shared state, graph skeleton | **done — verified running** |
+| 1 | Planner agent, shared state, graph skeleton | **done — offline test suite green** |
 | 2 | Researcher agent + real tools (web search, `yfinance`, `mfapi.in`) | next |
 | 3 | Critic agent + conditional loop-back edge | not started |
 | 4 | FastAPI endpoint, HTML frontend, deploy | not started |
@@ -64,9 +64,20 @@ Get a key at <https://aistudio.google.com/apikey>.
 ## Run
 
 ```bash
-python test_planner.py "HDFC Flexi Cap Fund"
-python test_planner.py "TATAMOTORS"
+python run_planner.py "HDFC Flexi Cap Fund"
+python run_planner.py "TATAMOTORS"
 ```
+
+## Tests
+
+```bash
+pip install -r requirements-dev.txt
+pytest -v
+```
+
+The suite injects a fake model, so it makes **no API calls** and needs
+no key — a rate limit is not a bug in your graph. Skipped tests are
+hand-written exercises; see `tests/EXERCISES.md`.
 
 ## Layout
 
@@ -77,7 +88,8 @@ deepdive/
 │   ├── llm.py        one place the Gemini model is configured
 │   ├── planner.py    planner agent: query -> sub-questions
 │   └── graph.py      wires nodes into the StateGraph
-├── test_planner.py   CLI smoke test for the planner
+├── run_planner.py    CLI: run the graph on one query and print the plan
+├── tests/            pytest suite — runs offline, no API key needed
 ├── THEORY.md         the concepts behind each thing built here
 └── DEVLOG.md         running log of issues hit and how they were fixed
 ```

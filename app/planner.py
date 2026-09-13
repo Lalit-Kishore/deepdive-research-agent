@@ -37,9 +37,15 @@ Avoid vague sub-questions like "Is this a good investment?" — that is \
 not researchable. Focus on facts: performance, cost, management, risk."""
 
 
-def build_planner_node():
-    """Returns a function usable as a LangGraph node."""
-    llm = get_llm()
+def build_planner_node(llm=None):
+    """Returns a function usable as a LangGraph node.
+
+    llm is injectable so tests can pass a fake and never hit the API.
+    Built once here rather than inside planner_node, so the client and
+    the bound schema are reused across every invocation — including
+    every pass of the Week 3 critic loop.
+    """
+    llm = llm if llm is not None else get_llm()
     structured_llm = llm.with_structured_output(PlannerOutput)
 
     def planner_node(state: ResearchState) -> dict:

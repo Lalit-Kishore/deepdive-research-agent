@@ -26,3 +26,6 @@ Thumbs.db
 # Project output
 reports/
 *.log
+
+# Blank-slate practice space (tests/EXERCISES.md Part C)
+scratch/

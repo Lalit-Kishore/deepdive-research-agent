@@ -385,7 +385,7 @@ timeouts, thresholds, endpoints.
 On secrets: `.env` holds the real key and is gitignored; `.env.example`
 is committed with placeholders so a cloner knows what to provide.
 `load_dotenv()` must run *before* the client is constructed — in
-`test_planner.py` that's why the `app.graph` import sits below
+`run_planner.py` that's why the `app.graph` import sits below
 `load_dotenv()` with a `# noqa: E402`, a deliberate exception to the
 usual imports-at-top rule.
 

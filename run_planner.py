@@ -1,7 +1,9 @@
 """
-Manual smoke test for the planner agent.
+Manual smoke test for the planner agent: one real API call, printed
+for you to judge by eye. The automated suite lives in tests/ and runs
+offline.
 
-    python test_planner.py "HDFC Flexi Cap Fund"
+    python run_planner.py "HDFC Flexi Cap Fund"
 
 Prints the sub-questions the planner produced so you can judge them
 by eye: are they specific and researchable, or vague and generic?
@@ -19,7 +21,7 @@ from app.graph import build_graph  # noqa: E402
 
 def main() -> int:
     if len(sys.argv) < 2:
-        print('Usage: python test_planner.py "HDFC Flexi Cap Fund"')
+        print('Usage: python run_planner.py "HDFC Flexi Cap Fund"')
         return 1
 
     query = " ".join(sys.argv[1:])

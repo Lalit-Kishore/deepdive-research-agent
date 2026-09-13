@@ -9,6 +9,115 @@ Format per entry: **What / Why it happened / Fix / Takeaway.**
 
 ---
 
+---
+
+## 2026-09-13 — Week 1 signed off: venv, offline test suite, one real gap found
+
+### Built
+
+- **`.venv/`** — DeepDive finally has its own virtualenv, closing
+  issue #4. Installed from `requirements.txt` alone, which is what
+  turned up issue #8 below.
+- **`tests/`** — a pytest suite that makes **zero API calls** and runs
+  in ~5s. `tests/conftest.py` has a `FakeChatModel` implementing only
+  `with_structured_output(schema) -> object with .invoke()`, which is
+  the entire contract the planner depends on.
+- **`pytest.ini`** — `pythonpath = .` so tests can `import app...`
+  without an editable install.
+- **Dependency injection** — `build_planner_node(llm=None)` and
+  `build_graph(planner_llm=None)`. Production passes nothing; tests
+  pass the fake.
+- **`test_planner.py` renamed to `run_planner.py`.** It was never a
+  test — it is a CLI that makes a live API call. Left as
+  `test_planner.py` it would have been collected by pytest *and*
+  collided with the real `tests/test_planner.py` (duplicate module
+  basename, a classic pytest import error).
+- **`tests/EXERCISES.md`** — specs for 5 unwritten tests and one real
+  bug fix, to be implemented by hand rather than generated.
+
+### Verified
+
+`pytest -v` → 2 passed, 5 skipped (the exercises), no network.
+
+Planner quality across four query types, all adapting with **no
+branching logic in the code**:
+
+| Query | Adapted by asking about | Verdict |
+|---|---|---|
+| HDFC Flexi Cap Fund | benchmark-relative returns, Sharpe, std dev | good |
+| TATAMOTORS (equity) | P/E, EV/EBITDA, net debt, JLR | good |
+| Parag Parikh Flexi Cap | foreign-equity allocation + regulatory limits | good |
+| SBI Magnum Gilt (debt) | Macaulay duration, avg maturity, RBI sensitivity | good |
+
+The gilt fund is the strongest result: nothing in the prompt mentions
+debt funds, yet it produced duration and rate-sensitivity questions,
+which are the *correct* domain questions for that asset class and
+meaningless for an equity fund.
+
+---
+
+### Issue #8 — `pydantic` was imported but never declared
+
+**What.** `app/planner.py:10` does `from pydantic import BaseModel,
+Field`, but `requirements.txt` never listed pydantic.
+
+**Why it happened.** pydantic arrives as a transitive dependency of
+`langchain-core`, so it was always importable and nothing ever failed.
+Running in the shared course venv hid it completely — the fresh venv
+is the only reason it surfaced.
+
+**Why it matters.** The dependency was real but undeclared. If
+langchain-core ever dropped or loosened its pydantic pin, DeepDive
+would break for a reason nothing in its own requirements explained.
+
+**Fix.** Declared it: `pydantic>=2.13,<3`.
+
+**Takeaway.** **Anything you `import` directly, you declare** — even if
+something else already installs it. And you only find these in a clean
+environment, which is the real argument for a per-project venv.
+
+---
+
+### Issue #9 — the planner invents a research plan for input that does not exist
+
+**What.** Given deliberate gibberish, the planner returned a confident,
+well-formed, entirely generic plan:
+
+```
+$ python run_planner.py "asdfgh qwerty zxcvb"
+1. What has driven the recent 3-year and 5-year annualized returns of
+   the target asset relative to its benchmark?
+2. How does the expense ratio or management fee structure of this asset
+   compare with its category peer average?
+```
+
+Note "the target asset" and "this asset" — the model had no idea what
+it was planning for and said so only by omission.
+
+**Why it happens.** `PlannerOutput` has exactly one field, `subtasks:
+List[str]`, so "I don't recognise this input" is **not a representable
+answer**. Constrained decoding forces a list of sub-questions, so the
+model produces the most plausible list it can. The schema that makes
+the planner reliable also makes refusal impossible.
+
+That is the real lesson: a structured-output schema doesn't just shape
+the answer, it bounds the space of answers — including the ones you
+needed.
+
+**Why it is not yet fixed.** Nothing downstream would catch it either:
+the Week 2 researcher would search for a nonexistent asset, the Week 3
+critic would score whatever prose came back, and DeepDive would emit a
+cited-looking report about nothing. A silent failure, which is the
+worst kind. Fixing it needs a decision about *where* validation lives
+and what the graph does about it — the first real `add_conditional_edges`
+in the project.
+
+**Status:** open, assigned as exercise 6 in `tests/EXERCISES.md`.
+
+**Takeaway.** When designing an output schema, ask what the model
+should do when the honest answer is "none of the above" — and make sure
+the schema can express it.
+
 ## 2026-08-31 — Week 1 closed out: planner verified end to end
 
 ### Built
@@ -20,7 +129,7 @@ Format per entry: **What / Why it happened / Fix / Takeaway.**
 - `app/graph.py` **(new)** — `build_graph()` compiles
   `START -> planner -> END`. Every entry point (CLI now, FastAPI in
   Week 4) goes through this one function so they can't drift apart.
-- `test_planner.py` **(new)** — CLI smoke test.
+- `run_planner.py` **(new)** — CLI smoke test.
 - `.gitignore`, `.env.example`, `README.md` **(new)**.
 - `requirements.txt` — version floors corrected (see issue #2).
 
@@ -109,7 +218,7 @@ temperature was never what made the planner reliable.
 
 ---
 
-### Issue #4 — running inside the wrong virtualenv (open, not yet fixed)
+### Issue #4 — running inside the wrong virtualenv (RESOLVED 2026-09-13)
 
 **What.** Tracebacks show imports resolving to
 `Dev Space\langchain\langchain-academy\lc-academy-env\Lib\site-packages`
@@ -130,7 +239,7 @@ cd "Dev Space/langchain/deepdive"
 python -m venv .venv
 .venv\Scripts\activate
 pip install -r requirements.txt
-python test_planner.py "HDFC Flexi Cap Fund"   # must still pass
+python run_planner.py "HDFC Flexi Cap Fund"   # must still pass
 ```
 
 **Takeaway.** "It runs on my machine" is usually a venv statement.
