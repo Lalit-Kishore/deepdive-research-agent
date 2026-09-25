@@ -68,6 +68,17 @@ python run_planner.py "HDFC Flexi Cap Fund"
 python run_planner.py "TATAMOTORS"
 ```
 
+## Evaluate the planner in bulk
+
+```bash
+python eval_planner.py              # built-in query set
+python eval_planner.py queries.txt  # your own, one per line
+```
+
+Runs many queries in one pass and writes a timestamped report to
+`reports/`. Prompt quality is judged by reading many outputs together,
+not one at a time.
+
 ## Tests
 
 ```bash
@@ -89,6 +100,7 @@ deepdive/
 │   ├── planner.py    planner agent: query -> sub-questions
 │   └── graph.py      wires nodes into the StateGraph
 ├── run_planner.py    CLI: run the graph on one query and print the plan
+├── eval_planner.py   batch-run many queries, write a report to reports/
 ├── tests/            pytest suite — runs offline, no API key needed
 ├── THEORY.md         the concepts behind each thing built here
 └── DEVLOG.md         running log of issues hit and how they were fixed

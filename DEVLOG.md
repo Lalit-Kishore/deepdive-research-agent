@@ -11,6 +11,83 @@ Format per entry: **What / Why it happened / Fix / Takeaway.**
 
 ---
 
+---
+
+## 2026-09-25 — batch evaluation harness, and a reliability problem it exposed
+
+### Built
+
+- **`eval_planner.py`** — runs the planner over a set of queries in one
+  go and writes a timestamped markdown report to `reports/` (gitignored)
+  as well as printing to screen.
+
+  Written instead of a chat UI. The thing being evaluated in Week 1 is
+  whether the *prompt* is good, and that judgement comes from reading
+  many outputs together and spotting patterns — not from one pretty
+  result at a time. A UI optimises for a single interaction; this
+  optimises for comparison. The UI stays a Week 4 serving concern.
+
+  The default query set is deliberately unkind: two equity funds, a debt
+  fund, a stock, a plausible-but-fake fund name, and gibberish. Easy
+  input tells you nothing.
+
+- **`tests/test_planner.py` restructured** into three parts — reference
+  tests, one fully worked exercise, then scaffolds with `# TODO` blanks.
+  The previous version stated exercises as prose specs, which assumed
+  pytest familiarity that wasn't there. Specs are not teaching material.
+
+### Issue #10 — no retry on transient API failures
+
+**What.** First batch run: **2 of 6 queries failed**, both with
+
+```
+GoogleAPIError: 503 UNAVAILABLE. This model is currently experiencing
+high demand. Spikes in demand are usually temporary. Please try again
+later.
+```
+
+They failed after **45s and 49s** — the client waits a long time before
+giving up. The other four succeeded in 5–15s.
+
+**Why single-query testing never showed this.** `run_planner.py` makes
+one call. At a ~30% transient failure rate you would mostly see it work
+and occasionally see a crash you'd write off as bad luck. Running six at
+once turns an anecdote into a number.
+
+**Why it gets worse, not better.** The Week 2 researcher will make
+roughly one call per sub-question — call it 5 per run. At this failure
+rate, the chance of at least one failure in a run goes from ~30% to
+~83%. A pipeline with no retry becomes unusable exactly when it gets
+more useful.
+
+**Partial mitigation already in place.** `eval_planner.py` wraps each
+query in try/except so one failure can't kill the batch, and records the
+failure in the report. That is error *containment*, not error handling —
+the query still produced nothing.
+
+**Not yet fixed.** Wants a retry with exponential backoff around the LLM
+call, and a decision about what a node should return when its model is
+unreachable after N attempts. `langchain-core` has
+`Runnable.with_retry(...)`, which is likely the smallest correct change
+and belongs in `app/llm.py` so every agent inherits it.
+
+**Status:** open. Exercise C in `tests/test_planner.py` pins down the
+current behaviour (the error propagates and kills the run) so the change
+can be made deliberately rather than by drift.
+
+**Takeaway.** Any network call you make more than once needs a retry
+policy, and "how often does this actually fail?" is a question you can
+only answer by running it in bulk. Build the batch runner early — it is
+cheap, and it converts intuitions into measurements.
+
+### Also re-confirmed
+
+Issue #9 (planner invents plans for nonexistent input) got *worse* under
+scrutiny: given `asdfgh qwerty zxcvb` the planner now interpolates the
+gibberish directly into each question — "annualized returns for asdfgh
+qwerty zxcvb compared to its primary benchmark". Still open, assigned as
+Part B in `tests/EXERCISES.md`.
+
 ## 2026-09-13 — Week 1 signed off: venv, offline test suite, one real gap found
 
 ### Built

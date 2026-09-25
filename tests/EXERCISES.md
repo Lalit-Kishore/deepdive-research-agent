@@ -1,137 +1,119 @@
-# Exercises — write the code yourself
+# Exercises — how to actually do these
 
-The point of this file is **active recall**. Retyping code you can see
-teaches almost nothing; producing code you can't see is what builds the
-memory. So none of these give you the answer.
+**The exercises now live inside `tests/test_planner.py`, not in this
+file.** Open it. Everything is in order, with the blanks marked `# TODO`
+and the shape already written out. This file is just the map.
 
-Rules that make this work:
-
-- Look at the LangGraph/pytest docs as much as you like. Do **not** look
-  at a finished solution.
-- Run `pytest -v` after every attempt. A failing test is information.
-- If you're stuck for more than ~15 minutes on one, ask me for a *hint*,
-  not the code.
+## The loop
 
 ```bash
 .venv\Scripts\activate
-pytest -v            # 2 pass, 5 skipped -> your job is to unskip them
+pytest -v
 ```
+
+Right now: **3 pass, 4 skipped.** The 4 skipped ones are yours. Do them
+top to bottom — they get harder in order.
+
+For each one:
+
+1. Delete its `@pytest.mark.skip(...)` line. Run `pytest -v`. It fails.
+   **That's correct** — you want to see it fail before you make it pass.
+2. Replace each `# TODO` with a real line of code.
+3. Run `pytest -v` again. Read the failure message — it tells you what
+   Python actually saw versus what you asserted.
+
+## Before you start: how a pytest test is shaped
+
+Every test is a plain function whose name starts with `test_`. pytest
+finds it, runs it, and calls it passing if no `assert` fails. The body
+is always three parts:
+
+```python
+def test_something():
+    thing = build_the_thing()        # ARRANGE — set up the world
+    result = thing.do_one_action()   # ACT     — the one thing you're testing
+    assert result == "expected"      # ASSERT  — what must be true after
+```
+
+That's the whole framework. `pytest.raises` is the one extra piece, and
+it's fully explained in the worked example.
+
+## What's in the file
+
+| Part | What | Status |
+|---|---|---|
+| 1 | Two **reference tests** | written — read them first |
+| 2 | One **worked exercise** (`PlannerOutput` validation) | written, every line explained — this is your pattern |
+| 3 | Exercises **A–D** | scaffolds with `# TODO` blanks — yours |
+
+**Read Part 2 carefully before starting Part 3.** It's deliberately the
+simplest possible test — no graph, no model, just a Pydantic class — so
+you can see the shape without anything else in the way.
+
+Rules that make this work: docs are fine, a finished solution is not.
+Stuck more than ~15 minutes? Ask me for a **hint**, not the code.
 
 ---
 
-## Part A — the pytest exercises (in `tests/test_planner.py`)
+## Part B — the real bug (do this after A–D)
 
-Delete the `@pytest.mark.skip` line and replace `raise
-NotImplementedError` with a real test body.
+### The planner invents a plan for things that don't exist
 
-### 1. `test_planner_binds_the_pydantic_schema`
-
-Assert that the planner bound `PlannerOutput` as its structured-output
-schema.
-
-- The fake records it on `fake_llm.bound_schema`.
-- **Why it matters:** proves the structured-output path is actually
-  wired. If someone later replaced it with free-text parsing, every
-  other test would still pass — this is the one that would fail.
-
-### 2. `test_graph_runs_end_to_end_and_preserves_the_query`
-
-Run the **compiled graph**, not the bare node.
-
-- `build_graph(planner_llm=FakeChatModel(subtasks=[...]))`, then
-  `.invoke({"query": "..."})`.
-- Assert the plan arrived **and** that `query` survived in the final
-  state.
-- **Why it matters:** this is the merge behaviour from THEORY.md §2.
-  Prove to yourself that returning `{"plan": ...}` doesn't wipe
-  `query`. Don't take my word for it — that's the whole point.
-
-### 3. `test_planner_output_rejects_a_bad_shape`
-
-Prove the Pydantic model actually validates.
-
-- `PlannerOutput(subtasks="not a list")` should raise.
-- `from pydantic import ValidationError`, then `pytest.raises`.
-- **Why it matters:** THEORY.md §2 claims "validate at the boundary."
-  Either the boundary enforces the type or the claim is decoration.
-
-### 4. `test_model_is_built_once_not_per_invocation`
-
-Prove the closure-factory claim from THEORY.md §4.
-
-- Build the node once, invoke it three times, assert
-  `with_structured_output` was called exactly **once**.
-- You'll need to count that — **add a counter to `FakeChatModel`** in
-  `conftest.py`. Editing the fixture is part of the exercise.
-- **Why it matters:** in Week 3 the critic loop re-invokes nodes
-  repeatedly. If the client were rebuilt per call you'd pay setup cost
-  on every pass.
-
-### 5. `test_planner_propagates_model_errors`
-
-Encode what happens when the API fails.
-
-- `FakeChatModel(raises=RuntimeError("429 rate limited"))`.
-- Today the error propagates. Assert that with `pytest.raises`.
-- Then **decide whether you want that.** A rate limit killing an
-  entire research run is a design choice, not a law. This is THEORY.md
-  question 10 — the test is how you pin down your answer.
-
----
-
-## Part B — a real bug to fix (this one matters)
-
-### 6. The planner accepts nonsense
-
-Verified on 2026-09-13:
+Verified again on 2026-09-25 via `eval_planner.py`:
 
 ```
-$ python run_planner.py "asdfgh qwerty zxcvb"
+$ python eval_planner.py
 
-1. What has driven the recent 3-year and 5-year annualized returns of
-   the target asset relative to its benchmark?
-2. How does the expense ratio or management fee structure of this asset
-   compare with its category peer average?
-...
+asdfgh qwerty zxcvb
+1. What are the 1-year, 3-year, and 5-year annualized returns for
+   asdfgh qwerty zxcvb compared to its primary benchmark?
+2. How does the expense ratio and fee structure of asdfgh qwerty zxcvb
+   compare to its direct category peers?
 ```
 
-It produced a confident, plausible, completely generic plan for a fund
-that does not exist. It did not refuse, and it did not flag anything.
+It's now interpolating the gibberish directly into confident, cited-
+looking research questions.
 
-**Why this is worse than it looks.** Nothing downstream will catch it
-either. The Week 2 researcher will dutifully search the web for a
-nonexistent asset, the Week 3 critic will score whatever prose comes
-back, and DeepDive will emit a cited-looking report about nothing. The
-failure is *silent*, which is the worst kind.
+**Why it happens** — and this follows directly from THEORY.md §3.
+`PlannerOutput` has exactly one field, `subtasks: List[str]`. So *"I
+don't recognise this"* is **not a representable answer**. Constrained
+decoding forces a list of sub-questions, so the model produces the most
+plausible list it can.
 
-**Your task.** Make the planner able to say "I don't recognise this."
+The schema that makes the planner reliable is the same thing that makes
+refusal impossible.
 
-Design decisions that are genuinely yours to make — think before you
-type:
+**Why it's serious:** nothing downstream catches it either. The Week 2
+researcher will search for a nonexistent asset, the Week 3 critic will
+score whatever prose comes back, and DeepDive emits a cited-looking
+report about nothing. Silent failure — the worst kind.
 
-- Where does the check belong? In `PlannerOutput` as an extra field, or
-  as a separate node before the planner?
-- If it's a field: what shape? A `bool`? A confidence score? An enum of
+**Your task.** Give the planner a way to say "I don't recognise this."
+
+Decisions that are genuinely yours — think before typing:
+
+- Where does the check belong: a new field on `PlannerOutput`, or a
+  separate node before the planner?
+- If a field: what shape? `bool`? A confidence score? An enum of
   `fund | stock | unrecognised`?
-- What does the **graph** do about it? This is the interesting part —
-  you'll need a conditional edge from the planner that routes either to
-  `END` or onward. That's your first `add_conditional_edges`, and it's
-  the same mechanism Week 3's critic loop needs. Getting it wrong here
-  is much cheaper than getting it wrong there.
-- How do you test it without an API call? (The fake model can return
-  whatever you want.)
+- **What does the graph do about it?** This is the interesting part. You
+  need a conditional edge out of the planner that routes either to `END`
+  or onward. That's your first `add_conditional_edges` — the same
+  mechanism Week 3's critic loop needs. Much cheaper to get wrong here.
+- How do you test it with no API call? (The fake returns whatever you
+  want.)
 
-Write the test **first**, watch it fail, then make it pass.
+Write the test first, watch it fail, then make it pass.
 
 ---
 
 ## Part C — the 15-minute blank-slate drill
 
-Do this at the start of a session, before touching real code. It is the
-highest-value-per-minute thing on this page for syntax retention.
+Do this at the start of a session, before real code. Highest value per
+minute on this page for syntax retention.
 
 ```bash
-mkdir scratch && cd scratch      # scratch/ is gitignored
+mkdir scratch && cd scratch      # gitignored
 ```
 
 From memory, with **all project files closed**, write a working
@@ -141,18 +123,16 @@ LangGraph that:
 2. has a node that appends one string to `notes`
 3. compiles and runs, printing the final state
 
-No LLM, no API key — pure LangGraph. Then diff your mental model
-against `app/state.py` and `app/graph.py`.
+No LLM, no API key — pure LangGraph.
 
-You will forget `StateGraph(...)` vs `builder.compile()`, whether it's
-`add_edge(START, "x")` or `set_entry_point("x")`, and the exact import
-path for `END`. **That forgetting is the exercise.** Looking it up after
-failing to recall it is what makes it stick; reading it beforehand
-doesn't.
+You will forget whether it's `add_edge(START, "x")` or
+`set_entry_point("x")`, and where `END` imports from. **That forgetting
+is the exercise.** Looking it up *after* failing to recall it is what
+makes it stick; reading it first doesn't.
 
-Escalate it over the weeks:
+Escalate weekly:
 
-- **Week 2:** add a second node and a reducer with `Annotated`.
-- **Week 3:** add a conditional edge that loops back, with a counter
-  that caps the loop. (This is DeepDive's critic in miniature — build it
-  here first.)
+- **Week 2:** a second node, and a reducer with `Annotated`.
+- **Week 3:** a conditional edge that loops back, with a counter that
+  caps the loop. That's DeepDive's critic in miniature — build it here
+  first, where it's disposable.
