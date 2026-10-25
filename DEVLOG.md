@@ -9,7 +9,26 @@ Format per entry: **What / Why it happened / Fix / Takeaway.**
 
 ---
 
----
+## 2026-10-25 — pivot: from finance analyst to general research agent
+
+**What.** DeepDive's scope changed from a mutual-fund / stock analyst
+to a general multi-agent research agent that writes cited answers to
+technical questions. README rewritten as the new spec.
+
+**Why.** The eval is the headline feature, and it is built on
+Frappe/Python problems already solved at work. Those come with known
+answers, so the agent can be *scored* (critic on vs off), not just
+demoed.
+
+**How the old version was kept.** Branched `finance-v0` at `b168c53`
+(the last finance-shaped commit) before changing anything on `main`.
+A branch is just a pointer, so this costs nothing and the old work
+stays one checkout away, without its code lingering on `main`.
+
+**Still finance-shaped on main:** the planner prompt and
+`PlannerOutput` description (`app/planner.py`), the test fixtures in
+`tests/conftest.py`, and the default query set in `eval_planner.py`.
+Those change in the next step, together with the tests that cover them.
 
 ---
 
