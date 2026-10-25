@@ -105,7 +105,6 @@ def test_planner_output_rejects_a_bad_shape():
 # change - a failing test tells you something, so read the message.
 
 
-@pytest.mark.skip(reason="YOUR TURN - exercise A")
 def test_planner_binds_the_pydantic_schema(fake_llm):
     """Exercise A: prove the planner bound PlannerOutput as its schema.
 
@@ -127,6 +126,7 @@ def test_planner_binds_the_pydantic_schema(fake_llm):
     # The fake stores whatever schema it was handed on `.bound_schema`
     # (look at tests/conftest.py to see it do this).
     # TODO: assert fake_llm.bound_schema is the PlannerOutput class.
+    assert fake_llm.bound_schema is PlannerOutput
     #       Careful: compare to the CLASS itself, not an instance of it.
 
 
