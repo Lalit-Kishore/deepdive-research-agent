@@ -26,15 +26,20 @@ load_dotenv()
 
 from app.graph import build_graph  # noqa: E402
 
-# A deliberately mixed set: two equity funds, a debt fund, a stock, a
-# fund that does not exist, and gibberish. The last two are the ones
-# that tell you something - anything can look good on easy input.
+# A deliberately mixed set: two broad Frappe questions, a narrow one
+# (should get 3 sub-questions, not padding), a plain Python one, an API
+# that does not exist, and gibberish. The last two are the ones that
+# tell you something - anything can look good on easy input.
+# Keep the planner prompt's own example question OUT of this list: the
+# model echoes prompt examples, which would flatter the result.
 DEFAULT_QUERIES = [
-    "HDFC Flexi Cap Fund",
-    "Parag Parikh Flexi Cap Fund",
-    "SBI Magnum Gilt Fund",
-    "TATAMOTORS",
-    "Quantum Nebula Superfund",
+    "Why does a Frappe whitelisted method return 403 for a Guest user "
+    "even with allow_guest=True?",
+    "How do I add a custom field to a standard ERPNext DocType so it "
+    "survives an app update?",
+    "What does frappe.db.get_value return when no record matches?",
+    "Why is my Python list comprehension slower than map() on large inputs?",
+    "How do I configure frappe.db.turbo_sync for multi-site replication?",
     "asdfgh qwerty zxcvb",
 ]
 

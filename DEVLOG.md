@@ -9,6 +9,40 @@ Format per entry: **What / Why it happened / Fix / Takeaway.**
 
 ---
 
+## 2026-10-25 — planner batch eval on technical questions
+
+New default query set in `eval_planner.py`: two broad Frappe questions,
+one narrow one, a Python one, a made-up API (`frappe.db.turbo_sync`) and
+gibberish. Findings:
+
+- **Specific, searchable output** for every real question. Each
+  sub-question names the function or setting involved.
+- **"Do not pad" is ignored.** Every query got exactly 4 sub-questions,
+  including the narrow `frappe.db.get_value` one, which needed about 2.
+  Not worth fixing yet; costs ~1-2 extra Tavily credits per question.
+- **The made-up API is planned as if real.** Expected: the planner has
+  no way to know. Catching "no source mentions this" is the researcher's
+  and critic's job. Keep `turbo_sync`-style questions in the eval set.
+- **Gibberish is reinterpreted, not refused** (keyboard layouts,
+  password strength). Harmless at planning time.
+
+### Issue #11 — free tier is 5 requests per minute
+
+**What.** The 6th query failed with `429 RESOURCE_EXHAUSTED`:
+`GenerateRequestsPerMinutePerProjectPerModel-FreeTier`, limit **5**, for
+`gemini-3.6-flash`. The same query passed alone a minute later.
+
+**Why it matters.** Planner-only, this is an annoyance. The full
+pipeline is about 1 planner + ~4 researcher + 1-2 critic calls per
+question, so ~7 calls. The eval is 20 questions x 2 runs (critic on/off),
+so ~280 calls: **about an hour at 5 RPM** at minimum, before any daily cap.
+
+**Fix (not yet done).** Pace calls client-side instead of failing:
+LangChain chat models take a `rate_limiter`, so one limiter set in
+`app/llm.py` covers every node. Do this before the researcher exists.
+
+---
+
 ## 2026-10-25 — planner prompt moved to technical questions
 
 **What.** Rewrote the planner prompt and `PlannerOutput` description for
