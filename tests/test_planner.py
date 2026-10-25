@@ -40,7 +40,7 @@ def test_planner_node_returns_only_the_plan_key(fake_llm):
     node = build_planner_node(llm=fake_llm)
 
     # ACT: call it the way LangGraph would - pass it the state
-    result = node({"query": "HDFC Flexi Cap Fund"})
+    result = node({"query": "How do I debounce a Frappe doc hook?"})
 
     # ASSERT: it returned exactly one key, and the right value
     assert set(result.keys()) == {"plan"}
@@ -51,14 +51,14 @@ def test_planner_sends_the_query_to_the_model(fake_llm):
     """The user's query must actually reach the model."""
     node = build_planner_node(llm=fake_llm)
 
-    node({"query": "Parag Parikh Flexi Cap Fund"})
+    node({"query": "Why does frappe.get_doc ignore my cache?"})
 
     # The fake recorded every call, so we can inspect what was sent.
     assert len(fake_llm.calls) == 1
     messages = fake_llm.calls[0]
     sent = " ".join(content for _role, content in messages)
 
-    assert "Parag Parikh Flexi Cap Fund" in sent
+    assert "Why does frappe.get_doc ignore my cache?" in sent
     assert "research planner" in sent.lower()
 
 
@@ -121,7 +121,7 @@ def test_planner_binds_the_pydantic_schema(fake_llm):
     # ACT - we must actually invoke it, because the schema gets bound
     # when build_planner_node runs. Try commenting this line out after
     # it passes and see whether the test still passes. (It should! Why?)
-    node({"query": "HDFC Flexi Cap Fund"})
+    node({"query": "How do I debounce a Frappe doc hook?"})
 
     # ASSERT
     # The fake stores whatever schema it was handed on `.bound_schema`
@@ -149,7 +149,7 @@ def test_graph_runs_end_to_end_and_preserves_the_query():
     #       Look at app/graph.py for the parameter name.
 
     # ACT
-    # TODO: invoke the graph with {"query": "HDFC Flexi Cap Fund"}.
+    # TODO: invoke the graph with {"query": "How do I debounce a Frappe doc hook?"}.
     #       A compiled graph is called with .invoke(state) and it
     #       returns the FINAL state as a dict.
 

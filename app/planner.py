@@ -1,9 +1,9 @@
 """
 Planner agent.
 
-Takes the user's raw query (a fund name or stock ticker) and breaks
-it into 4-5 concrete sub-questions the researcher agent will answer
-in later weeks. Uses Gemini's structured output so we get a clean
+Takes the user's technical question and breaks it into 3-5 concrete
+sub-questions the researcher agent will answer in later weeks, one
+web search each. Uses Gemini's structured output so we get a clean
 Python list back instead of parsing free text.
 """
 
@@ -16,25 +16,39 @@ from app.state import ResearchState
 class PlannerOutput(BaseModel):
     subtasks: List[str] = Field(
         description=(
-            "4 to 5 specific, researchable sub-questions about the "
-            "given fund or stock. Cover: recent performance drivers, "
-            "cost vs peers, manager/leadership track record, and "
-            "concentration or sector risk."
+            "3 to 5 specific sub-questions that together answer the "
+            "user's technical question. Each must work on its own as a "
+            "web search query. Cover: what the official docs say, how "
+            "developers actually solved it (forums, GitHub issues, Q&A "
+            "sites), and the known pitfalls or trade-offs of the fix."
         )
     )
 
 
-PLANNER_SYSTEM_PROMPT = """You are a research planner for a financial \
-research assistant. Given a mutual fund name or a stock ticker, break \
-it into 4-5 specific sub-questions a researcher could answer using \
-web search and financial data tools.
+PLANNER_SYSTEM_PROMPT = """You are a research planner for a technical \
+research assistant. Given a technical question or a problem to solve, \
+break it into 3-5 specific sub-questions a researcher could answer with \
+one web search each and by reading the pages it finds.
 
-Good sub-questions are specific and checkable, e.g.:
-- "What has driven HDFC Flexi Cap Fund's returns over the past 3 years?"
-- "How does its expense ratio compare to category peers?"
+Good sub-questions are specific and checkable. For the question \
+"How do I run a Frappe background job only after the current database \
+transaction commits?", good sub-questions are:
+- "What does the enqueue_after_commit argument of frappe.enqueue do?"
+- "How do Frappe developers handle background jobs that read a record \
+before the transaction that created it has committed?"
+- "What errors occur when a Frappe background job is enqueued before \
+the database commit?"
 
-Avoid vague sub-questions like "Is this a good investment?" — that is \
-not researchable. Focus on facts: performance, cost, management, risk."""
+Avoid vague sub-questions like "What is Frappe?" or "What are best \
+practices for background jobs?" — they drift away from the user's \
+question and a search returns generic pages. Name the specific \
+library, function, version or error message involved, so each \
+sub-question works as a search query without the original question \
+next to it.
+
+Use fewer sub-questions for a narrow question; do not pad. Focus on \
+what sources can confirm: documented behaviour, working code, version \
+differences, and known bugs."""
 
 
 def build_planner_node(llm=None):

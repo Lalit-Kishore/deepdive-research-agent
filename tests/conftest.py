@@ -29,10 +29,10 @@ class FakeChatModel:
     def __init__(self, subtasks=None, raises=None):
         # what the fake model will "return" as its plan
         self.subtasks = subtasks if subtasks is not None else [
-            "What drove the fund's 3-year returns?",
-            "How does its expense ratio compare to peers?",
-            "What is the fund manager's track record?",
-            "What is the portfolio concentration risk?",
+            "What does the enqueue_after_commit argument of frappe.enqueue do?",
+            "How do Frappe developers delay a job until the DB commits?",
+            "What errors occur when a job is enqueued before commit?",
+            "Which Frappe versions support enqueue_after_commit?",
         ]
         # set to an Exception instance to simulate an API failure
         self.raises = raises

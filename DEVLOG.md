@@ -9,6 +9,25 @@ Format per entry: **What / Why it happened / Fix / Takeaway.**
 
 ---
 
+## 2026-10-25 — planner prompt moved to technical questions
+
+**What.** Rewrote the planner prompt and `PlannerOutput` description for
+technical questions; test fixtures switched from fund questions to
+Frappe ones. Verified live on `gemini-3.6-flash`: 3 and 4 specific
+sub-questions for two Frappe questions. No code change was needed for
+the model; `app/llm.py` already defaulted to it.
+
+**Choices.** 3-5 sub-questions instead of a fixed 4-5, with "do not
+pad": each sub-question becomes one Tavily search, so a narrow question
+should not spend 5 credits. Each sub-question must work as a search
+query on its own, because that is literally how the researcher will use it.
+
+**Watch out (eval).** On the prompt's own example question, the model
+returned that example almost word for word. A question used as a prompt
+example must never be in the eval set, or the score is inflated.
+
+---
+
 ## 2026-10-25 — pivot: from finance analyst to general research agent
 
 **What.** DeepDive's scope changed from a mutual-fund / stock analyst
