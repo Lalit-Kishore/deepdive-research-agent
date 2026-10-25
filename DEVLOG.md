@@ -41,6 +41,20 @@ so ~280 calls: **about an hour at 5 RPM** at minimum, before any daily cap.
 LangChain chat models take a `rate_limiter`, so one limiter set in
 `app/llm.py` covers every node. Do this before the researcher exists.
 
+**Worse: 20 requests per day.** AI Studio's rate-limit page shows the
+free tier for `gemini-3.6-flash` at 5 RPM and **20 RPD**. A limiter
+fixes RPM; nothing fixes RPD. One eval run (~140 calls) would need
+7 days of quota.
+
+**Decision: move to the paid tier, stay on `gemini-3.6-flash`.** At
+$0.75 / $3.75 per 1M input/output tokens (through 2026-12-31), one eval
+run is roughly $3, and all of v1 roughly $10-20. Paid-tier prompts are
+also not used to improve Google's products, which matters because the
+eval questions come from real work. Other providers (OpenAI, Claude)
+were considered; switching would cost days to save dollars, and the
+eval measures critic on vs off, which does not depend on the
+provider. Comparing providers is an after-v1 idea.
+
 ---
 
 ## 2026-10-25 — planner prompt moved to technical questions
