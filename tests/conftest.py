@@ -59,3 +59,46 @@ class FakeChatModel:
 def fake_llm():
     """A fake model returning a sensible 4-item plan."""
     return FakeChatModel()
+
+
+class FakeSearchClient:
+    """Stands in for tavily.TavilyClient.
+
+    Same idea as FakeChatModel: implements only `.search(query, **kwargs)`,
+    returns a canned Tavily-shaped response, and records every call so
+    tests can check what was sent — e.g. that the cheap search depth was
+    used.
+    """
+
+    def __init__(self, results=None, raises=None):
+        # Tavily-shaped results, including keys our tool should drop
+        self.results = results if results is not None else [
+            {
+                "title": "frappe.enqueue - Frappe Docs",
+                "url": "https://docs.frappe.io/framework/user/en/api/background_jobs",
+                "content": "enqueue_after_commit: run the job only after commit.",
+                "score": 0.91,
+                "raw_content": None,
+            },
+            {
+                "title": "Job runs before doc is saved - Frappe Forum",
+                "url": "https://discuss.frappe.io/t/job-before-commit/1",
+                "content": "The worker could not find the record.",
+                "score": 0.74,
+                "raw_content": None,
+            },
+        ]
+        self.raises = raises
+        self.calls = []
+
+    def search(self, query, **kwargs):
+        self.calls.append((query, kwargs))
+        if self.raises is not None:
+            raise self.raises
+        return {"query": query, "results": self.results, "response_time": 0.5}
+
+
+@pytest.fixture
+def fake_search_client():
+    """A fake Tavily client returning two results."""
+    return FakeSearchClient()

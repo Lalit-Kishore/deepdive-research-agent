@@ -98,7 +98,9 @@ copy .env.example .env        # then fill in both keys
 - Tavily key (free plan, 1 credit per basic search): <https://app.tavily.com>
 
 The model defaults to `gemini-3.6-flash`; override with the
-`DEEPDIVE_MODEL` environment variable.
+`DEEPDIVE_MODEL` environment variable. Calls are paced to
+`DEEPDIVE_RPM` per minute (default 4, under the 5 RPM free tier); raise
+it to match your tier.
 
 ## Run
 
@@ -136,8 +138,10 @@ deepdive/
 │   ├── state.py      ResearchState — the shared state schema
 │   ├── llm.py        one place the Gemini model is configured
 │   ├── planner.py    planner agent: question -> sub-questions
+│   ├── search.py     Tavily web search, one call per sub-question
 │   └── graph.py      wires nodes into the StateGraph
 ├── run_planner.py    CLI: run the graph on one question, print the plan
+├── run_search.py     CLI: one real Tavily search, print the results
 ├── eval_planner.py   batch-run many questions, write a report to reports/
 ├── tests/            pytest suite — runs offline, no API key needed
 ├── THEORY.md         the concepts behind each thing built here

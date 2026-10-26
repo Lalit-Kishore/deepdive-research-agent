@@ -9,6 +9,52 @@ Format per entry: **What / Why it happened / Fix / Takeaway.**
 
 ---
 
+## 2026-10-26 — rate limiter, search tool, and a wrong diagnosis corrected
+
+### Issue #10 corrected — the client already retried
+
+**What.** Issue #10 said there was "no retry on transient API failures"
+and planned to add `with_retry()`. Reading the installed code shows that
+was wrong. `ChatGoogleGenerativeAI` defaults to `max_retries=6`, passed
+to google-genai as `HttpRetryOptions`, which retries 408/429/500/502/503/504
+with exponential backoff (1, 2, 4, 8, 16s + jitter).
+
+**Evidence.** That backoff adds up to ~31s plus call time, which matches
+the failures exactly: 45s and 49s for the 503s, 36.5s for the 429. A
+client with no retry fails in ~1s. Those runs *were* retrying; they ran
+out of attempts.
+
+**Fix.** No extra retry. Wrapping `with_retry()` around a client that
+already retries would multiply attempts (6 x N) and the waits with them.
+What was actually missing was **pacing**: `InMemoryRateLimiter` in
+`app/llm.py`, at `DEEPDIVE_RPM` (default 4), one instance shared by
+every model `get_llm()` builds, because Google counts per project, not
+per node. Verified live: a planner run took 31s, ~15s of it waiting for
+the first token (the bucket starts empty, by design).
+
+**Takeaway.** Before adding a fix, check what the library already does.
+The timing of a failure is evidence: "fails after exactly ~31s plus call
+time" is the fingerprint of a retry schedule.
+
+### Built: `app/search.py`
+
+- **Plain function, not a LangChain tool.** The planner already decides
+  what to search, so no model has to choose when to call it. A tool would
+  only matter if the LLM were picking actions. Every search done in code
+  is an LLM call not made.
+- **`tavily-python`, not `langchain-tavily`.** Installed the LangChain
+  one first and read it: it returns errors as values (a string for
+  "no results", `{"error": e}` for a bad key) instead of raising, and it
+  pulls in the full `langchain` package. Uninstalled both.
+- **`search_depth="basic"` pinned** (1 credit) and asserted in a test, so
+  no default can silently move a run to 2-credit "advanced".
+- Results trimmed to `title / url / content`. "No results" returns `[]`:
+  for a made-up API, that is the signal the critic needs.
+- Offline tests via `FakeSearchClient` in `tests/conftest.py`.
+  `run_search.py` is the 1-credit manual check.
+
+---
+
 ## 2026-10-25 — planner batch eval on technical questions
 
 New default query set in `eval_planner.py`: two broad Frappe questions,

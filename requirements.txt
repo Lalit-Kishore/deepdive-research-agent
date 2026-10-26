@@ -10,7 +10,6 @@ python-dotenv>=1.0
 # transitive dep of langchain-core, but anything we `import` gets declared.
 pydantic>=2.13,<3
 
-# Week 2 (researcher tools) — uncomment as they get wired in
-# langchain-tavily>=0.2
-# yfinance>=0.2
-# requests>=2.31
+# Web search (app/search.py). Tavily's own client, not langchain-tavily:
+# see the module docstring for why.
+tavily-python>=0.8,<1
