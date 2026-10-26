@@ -9,6 +9,50 @@ Format per entry: **What / Why it happened / Fix / Takeaway.**
 
 ---
 
+## 2026-10-26 — researcher agent: first end-to-end cited answer
+
+### Built
+
+- **`app/researcher.py`**: searches every sub-question, pools results
+  into one numbered source list (one entry per URL, so `[n]` always means
+  one page), then makes **one** Gemini call that writes the cited answer.
+  No sources found means no model call: there is nothing to cite from.
+- **State:** `findings: Dict[str, str]` became `sources: List[SearchResult]`.
+  Citation `[n]` in the draft is `sources[n - 1]`.
+- **Graph:** `START -> planner -> researcher -> END`. `run_planner.py`
+  and `eval_planner.py` now call the planner node directly. Otherwise
+  every planner check would have spent Tavily credits on the researcher.
+- **`run.py`**: the full pipeline on one question.
+- `FakeChatModel` gained a plain `.invoke()` (the researcher wants text,
+  not a schema). Exercise B updated: the graph now needs both fakes.
+
+### Finding #12 — snippets are not enough; the page reader is needed
+
+**What.** `run.py "What does frappe.db.get_value return when no record
+matches?"` (42s, 3 searches, 10 sources). The correct answer is `None`.
+The agent replied that **none of the sources say**, and did not guess.
+
+**Why.** The official Database API page was retrieved as source [2],
+but Tavily's `content` is a short extract chosen for the *query*, and
+the sentence with the answer was not in it.
+
+**Good news inside the bad.** The grounding rule works: given no
+evidence, it refused instead of answering from memory. That is the
+behaviour that makes citations trustworthy.
+
+**Two smaller problems for the critic to catch:**
+- It cited `[1][2][3][4][6]` *for an absence* ("none of the sources
+  specify… [1][2]…"). A citation should back a claim, not decorate one.
+- Noise sources: a company-financials page and the generic Python
+  exceptions page.
+
+**Next.** A page reader: fetch full text for the top few sources.
+Tavily Extract costs 1 credit per 5 URLs (free plan: 1,000 credits a
+month), so ~1-2 extra credits per question. Decided on evidence, not
+up front, which is why it was not built before the researcher.
+
+---
+
 ## 2026-10-26 — rate limiter, search tool, and a wrong diagnosis corrected
 
 ### Issue #10 corrected — the client already retried

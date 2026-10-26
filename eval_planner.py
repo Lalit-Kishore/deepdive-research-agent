@@ -24,7 +24,9 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from app.graph import build_graph  # noqa: E402
+# The planner node on its own, not the full graph: the graph now runs
+# the researcher too, which would spend Tavily credits on every query.
+from app.planner import build_planner_node  # noqa: E402
 
 # A deliberately mixed set: two broad Frappe questions, a narrow one
 # (should get 3 sub-questions, not padding), a plain Python one, an API
@@ -59,7 +61,7 @@ def load_queries(argv: list[str]) -> list[str]:
 
 def main() -> int:
     queries = load_queries(sys.argv)
-    graph = build_graph()
+    planner = build_planner_node()
 
     stamp = datetime.now().strftime("%Y-%m-%d_%H%M%S")
     out_dir = Path("reports")
@@ -75,7 +77,7 @@ def main() -> int:
 
         started = time.perf_counter()
         try:
-            plan = graph.invoke({"query": query})["plan"]
+            plan = planner({"query": query})["plan"]
             elapsed = time.perf_counter() - started
             total += elapsed
 

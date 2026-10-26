@@ -7,17 +7,19 @@ CI, and fail for reasons that have nothing to do with your code — a
 rate limit is not a bug in your graph.
 
 So we inject a fake model. `build_planner_node(llm=...)` and
-`build_graph(planner_llm=...)` both accept one.
+`build_graph(planner_llm=..., researcher_llm=..., search=...)` accept them.
 """
 
 import pytest
+from langchain_core.messages import AIMessage
 
 
 class FakeChatModel:
     """Stands in for ChatGoogleGenerativeAI.
 
-    Only implements the one method the planner actually uses:
-    `with_structured_output(schema)`. That returns an object with an
+    Implements the two methods the agents use: `with_structured_output`
+    (planner) and plain `invoke` (researcher, which wants free text).
+    For the planner, `with_structured_output(schema)` That returns an object with an
     `.invoke(messages)` method — which is exactly the contract the real
     LangChain runnable has. Understanding that contract is most of
     understanding structured output.
@@ -26,7 +28,7 @@ class FakeChatModel:
     actually sent to the model, not just on what came back.
     """
 
-    def __init__(self, subtasks=None, raises=None):
+    def __init__(self, subtasks=None, raises=None, answer=None):
         # what the fake model will "return" as its plan
         self.subtasks = subtasks if subtasks is not None else [
             "What does the enqueue_after_commit argument of frappe.enqueue do?",
@@ -34,6 +36,10 @@ class FakeChatModel:
             "What errors occur when a job is enqueued before commit?",
             "Which Frappe versions support enqueue_after_commit?",
         ]
+        # what plain .invoke() "returns" as text (the researcher's draft)
+        self.answer = answer if answer is not None else (
+            "Pass enqueue_after_commit=True to frappe.enqueue [1][2]."
+        )
         # set to an Exception instance to simulate an API failure
         self.raises = raises
 
@@ -53,6 +59,12 @@ class FakeChatModel:
                 return schema(subtasks=outer.subtasks)
 
         return _Bound()
+
+    def invoke(self, messages, **kwargs):
+        self.calls.append(messages)
+        if self.raises is not None:
+            raise self.raises
+        return AIMessage(content=self.answer)
 
 
 @pytest.fixture

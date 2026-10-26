@@ -16,7 +16,8 @@ import pytest
 
 from app.graph import build_graph
 from app.planner import PlannerOutput, build_planner_node
-from tests.conftest import FakeChatModel
+from app.search import build_search
+from tests.conftest import FakeChatModel, FakeSearchClient
 
 
 # =====================================================================
@@ -145,8 +146,12 @@ def test_graph_runs_end_to_end_and_preserves_the_query():
     # Note: no `fake_llm` argument in the function signature this time -
     # build your own so you control exactly what comes back.
     fake = FakeChatModel(subtasks=["Q1", "Q2", "Q3"])
-    # TODO: build the graph, passing `fake` in.
-    #       Look at app/graph.py for the parameter name.
+    # The graph now also runs the researcher, which would call Gemini and
+    # Tavily for real. Fake both: the same `fake` model works for it, and
+    # FakeSearchClient (tests/conftest.py) stands in for Tavily.
+    search = build_search(client=FakeSearchClient())
+    # TODO: build the graph, passing `fake` as BOTH models, and `search`.
+    #       Look at app/graph.py for the parameter names.
 
     # ACT
     # TODO: invoke the graph with {"query": "How do I debounce a Frappe doc hook?"}.

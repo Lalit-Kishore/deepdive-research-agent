@@ -6,7 +6,9 @@ back to this one object. LangGraph merges each node's return dict
 into this state automatically.
 """
 
-from typing import TypedDict, List, Dict
+from typing import TypedDict, List
+
+from app.search import SearchResult
 
 
 class ResearchState(TypedDict):
@@ -16,11 +18,11 @@ class ResearchState(TypedDict):
     # filled by the planner: list of sub-questions to research
     plan: List[str]
 
-    # filled by the researcher: {sub_question: finding_text}
-    # left empty for week 1 — researcher doesn't exist yet
-    findings: Dict[str, str]
+    # filled by the researcher: every search result, one per URL.
+    # The draft's citation [n] refers to sources[n - 1].
+    sources: List[SearchResult]
 
-    # filled by the researcher: the draft report text
+    # filled by the researcher: the cited answer text
     draft: str
 
     # filled by the critic: feedback if the draft needs revision

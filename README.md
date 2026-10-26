@@ -70,15 +70,10 @@ Results land here when v1 ships.
 
 | Sprint week | Scope | State |
 |---|---|---|
-| 1 | Spec rewrite; planner on `gemini-3.6-flash` for general technical questions | **in progress** |
-| 2 | Tavily search tool, page reader, researcher agent | not started |
+| 1 | Spec rewrite; planner on `gemini-3.6-flash` for general technical questions | **done** |
+| 2 | Tavily search tool, researcher agent (cited answers) | **working end to end** — page reader next |
 | 3 | Critic agent + conditional loop-back edge | not started |
 | 4 | Eval script + score, demo, ship v1 | not started |
-
-The planner, shared state, graph skeleton and offline test suite
-already exist from the earlier version of this project. The planner's
-prompt is still tuned for its old domain and is the next thing to
-change.
 
 > **History.** DeepDive started as a mutual-fund / stock research tool.
 > That version is preserved on the [`finance-v0`](../../tree/finance-v0)
@@ -105,11 +100,20 @@ it to match your tier.
 ## Run
 
 ```bash
-python run_planner.py "Why does frappe.db.commit inside a doc hook cause partial saves?"
+python run.py "What does frappe.db.get_value return when no record matches?"
 ```
 
-Prints the planner's sub-questions. The full pipeline gets its own
-entry point (`run.py`) once the researcher exists.
+Runs the whole pipeline: prints the plan, the cited answer, and the
+numbered sources. Costs one Tavily credit per sub-question plus two
+Gemini calls.
+
+```bash
+python run_planner.py "How do I debounce a Frappe doc_events hook?"
+python run_search.py "frappe.enqueue enqueue_after_commit"
+```
+
+Each runs one piece on its own (planner only, or one search) for
+checking it by eye without paying for the rest.
 
 ```bash
 python eval_planner.py              # built-in query set
@@ -139,8 +143,10 @@ deepdive/
 │   ├── llm.py        one place the Gemini model is configured
 │   ├── planner.py    planner agent: question -> sub-questions
 │   ├── search.py     Tavily web search, one call per sub-question
+│   ├── researcher.py researcher agent: searches -> one cited answer
 │   └── graph.py      wires nodes into the StateGraph
-├── run_planner.py    CLI: run the graph on one question, print the plan
+├── run.py            CLI: full pipeline on one question, cited answer
+├── run_planner.py    CLI: planner only, print the plan
 ├── run_search.py     CLI: one real Tavily search, print the results
 ├── eval_planner.py   batch-run many questions, write a report to reports/
 ├── tests/            pytest suite — runs offline, no API key needed
