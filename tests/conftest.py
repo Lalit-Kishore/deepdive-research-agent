@@ -7,7 +7,8 @@ CI, and fail for reasons that have nothing to do with your code — a
 rate limit is not a bug in your graph.
 
 So we inject a fake model. `build_planner_node(llm=...)` and
-`build_graph(planner_llm=..., researcher_llm=..., search=...)` accept them.
+`build_graph(planner_llm=..., researcher_llm=..., search=..., read=...)`
+accept them.
 """
 
 import pytest
@@ -76,13 +77,13 @@ def fake_llm():
 class FakeSearchClient:
     """Stands in for tavily.TavilyClient.
 
-    Same idea as FakeChatModel: implements only `.search(query, **kwargs)`,
-    returns a canned Tavily-shaped response, and records every call so
-    tests can check what was sent — e.g. that the cheap search depth was
-    used.
+    Same idea as FakeChatModel: implements only `.search(query, **kwargs)`
+    and `.extract(urls, **kwargs)`, returns canned Tavily-shaped responses,
+    and records every call so tests can check what was sent — e.g. that
+    the cheap search depth was used.
     """
 
-    def __init__(self, results=None, raises=None):
+    def __init__(self, results=None, raises=None, pages=None):
         # Tavily-shaped results, including keys our tool should drop
         self.results = results if results is not None else [
             {
@@ -100,8 +101,28 @@ class FakeSearchClient:
                 "raw_content": None,
             },
         ]
+        # {url: full text} for extract(). A URL left out counts as failed.
+        self.pages = pages if pages is not None else {
+            r["url"]: f"Full page text of {r['title']}" for r in self.results
+        }
         self.raises = raises
         self.calls = []
+        self.extract_calls = []
+
+    def extract(self, urls, **kwargs):
+        self.extract_calls.append((urls, kwargs))
+        if self.raises is not None:
+            raise self.raises
+        return {
+            "results": [
+                {"url": u, "raw_content": self.pages[u]}
+                for u in urls if u in self.pages
+            ],
+            "failed_results": [
+                {"url": u, "error": "blocked"}
+                for u in urls if u not in self.pages
+            ],
+        }
 
     def search(self, query, **kwargs):
         self.calls.append((query, kwargs))

@@ -3,8 +3,8 @@ Run the full pipeline on one question: plan, search, cited answer.
 
     python run.py "How do I run a Frappe job only after the DB commits?"
 
-Costs real money: one Tavily credit per sub-question (3-5) plus two
-Gemini calls (planner, researcher).
+Costs real money: one Tavily credit per sub-question (3-5), one more
+to read the top pages, and two Gemini calls (planner, researcher).
 """
 
 import sys

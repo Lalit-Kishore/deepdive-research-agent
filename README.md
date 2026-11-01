@@ -27,8 +27,8 @@ Example question:
             |
             v
      +-------------+
-     | Researcher  |  per sub-question: Tavily search -> read pages
-     +-------------+  -> draft answer with [n] citations
+     | Researcher  |  Tavily search per sub-question -> read top pages
+     +-------------+  -> one draft answer with [n] citations
             |
             v
      +-------------+
@@ -71,7 +71,7 @@ Results land here when v1 ships.
 | Sprint week | Scope | State |
 |---|---|---|
 | 1 | Spec rewrite; planner on `gemini-3.6-flash` for general technical questions | **done** |
-| 2 | Tavily search tool, researcher agent (cited answers) | **working end to end** — page reader next |
+| 2 | Tavily search tool, page reader, researcher agent (cited answers) | **done** |
 | 3 | Critic agent + conditional loop-back edge | not started |
 | 4 | Eval script + score, demo, ship v1 | not started |
 
@@ -104,8 +104,8 @@ python run.py "What does frappe.db.get_value return when no record matches?"
 ```
 
 Runs the whole pipeline: prints the plan, the cited answer, and the
-numbered sources. Costs one Tavily credit per sub-question plus two
-Gemini calls.
+numbered sources. Costs one Tavily credit per sub-question, one more
+to read the top pages, and two Gemini calls.
 
 ```bash
 python run_planner.py "How do I debounce a Frappe doc_events hook?"
@@ -142,7 +142,7 @@ deepdive/
 │   ├── state.py      ResearchState — the shared state schema
 │   ├── llm.py        one place the Gemini model is configured
 │   ├── planner.py    planner agent: question -> sub-questions
-│   ├── search.py     Tavily web search, one call per sub-question
+│   ├── search.py     Tavily web search and full-page reader
 │   ├── researcher.py researcher agent: searches -> one cited answer
 │   └── graph.py      wires nodes into the StateGraph
 ├── run.py            CLI: full pipeline on one question, cited answer

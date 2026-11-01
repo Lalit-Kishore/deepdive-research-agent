@@ -18,17 +18,18 @@ from app.planner import build_planner_node
 from app.researcher import build_researcher_node
 
 
-def build_graph(planner_llm=None, researcher_llm=None, search=None):
+def build_graph(planner_llm=None, researcher_llm=None, search=None, read=None):
     """Wire the nodes together and return a compiled, runnable graph.
 
     Every argument is injectable for tests; production passes nothing and
-    each node builds its own model (app.llm) and search tool (app.search).
+    each node builds its own model (app.llm) and tools (app.search).
     """
     builder = StateGraph(ResearchState)
 
     builder.add_node("planner", build_planner_node(planner_llm))
     builder.add_node(
-        "researcher", build_researcher_node(llm=researcher_llm, search=search)
+        "researcher",
+        build_researcher_node(llm=researcher_llm, search=search, read=read),
     )
 
     builder.add_edge(START, "planner")

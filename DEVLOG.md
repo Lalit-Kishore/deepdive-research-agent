@@ -9,6 +9,55 @@ Format per entry: **What / Why it happened / Fix / Takeaway.**
 
 ---
 
+## 2026-11-01 — page reader, and a missing-key check that was never there
+
+### Built
+
+- **`build_reader` in `app/search.py`**: Tavily Extract, basic depth, each
+  page capped at 30k chars. Pages Tavily cannot fetch are left out.
+- **`read_top_sources` in `app/researcher.py`**: full text replaces the
+  snippet on the top 5 sources (1 extract credit). A failed page keeps
+  its snippet.
+- **Pooling by rank** in `collect_sources`: every sub-question's best
+  result first, then every second best. The old order was by sub-question,
+  so "top 5" would have meant five results for sub-question 1 only.
+- **`build_client`**: raises `ValueError` at build time if
+  `TAVILY_API_KEY` is missing or blank.
+
+### Issue #13 — a docstring claimed a check that did not exist
+
+**What.** `build_search`'s docstring said the client "fails here, at
+build time" with no key. Tested it: `TavilyClient()` raises nothing. With
+no key it silently enters a limited keyless mode, so a missing key would
+have shown up mid-run, or as lower limits.
+
+**Fix.** Check the key ourselves in `build_client`, used by both the
+search and the reader. Injected fakes skip it, so tests still need no key.
+
+**Takeaway.** A claim about a library's behaviour is a guess until it is
+run. Same lesson as Issue #10, this time in my own docstring.
+
+### Finding #12 closed — before / after on one question
+
+`What does frappe.db.get_value return when no record matches?`
+
+| | Snippets only | + page reader |
+|---|---|---|
+| Answer | "none of the sources say" | `None`, cited (correct) |
+| Tavily credits | 3 | 5 (4 searches, 1 extract) |
+| Text sent to Gemini | not measured | ~62k chars, ~16k tokens |
+
+One question, not a score. The plan also differed between runs (3 vs 4
+sub-questions), so the reader is the likely cause, not a proven one. The
+eval is what measures it. The prompt was left unchanged so this comparison
+stayed about the reader.
+
+**Still open for the critic:** the answer cites a 2018 blog [2] though the
+official docs were also read [4], and irrelevant sources still reach the
+model (a Shopify release note, a company-financials page).
+
+---
+
 ## 2026-10-26 — researcher agent: first end-to-end cited answer
 
 ### Built

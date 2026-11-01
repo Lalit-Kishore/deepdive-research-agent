@@ -5,7 +5,7 @@ stands in for Tavily, so no key and no credits are needed.
 
 import pytest
 
-from app.search import build_search
+from app.search import build_reader, build_search
 from tests.conftest import FakeSearchClient
 
 
@@ -47,3 +47,46 @@ def test_search_propagates_client_errors():
 
     with pytest.raises(RuntimeError):
         search("anything")
+
+
+@pytest.mark.parametrize("value", [None, "", "   "])
+@pytest.mark.parametrize("builder", [build_search, build_reader])
+def test_missing_key_fails_at_build_time(monkeypatch, builder, value):
+    """TavilyClient would silently go keyless, so we must check ourselves."""
+    if value is None:
+        monkeypatch.delenv("TAVILY_API_KEY", raising=False)
+    else:
+        monkeypatch.setenv("TAVILY_API_KEY", value)
+
+    with pytest.raises(ValueError, match="TAVILY_API_KEY"):
+        builder()
+
+
+def test_key_present_builds_without_a_network_call(monkeypatch):
+    monkeypatch.setenv("TAVILY_API_KEY", "tvly-dummy")
+
+    assert callable(build_search())
+
+
+def test_injected_client_needs_no_key(monkeypatch, fake_search_client):
+    """Tests and fakes must never depend on a real key."""
+    monkeypatch.delenv("TAVILY_API_KEY", raising=False)
+
+    assert callable(build_search(client=fake_search_client))
+
+
+def test_reader_uses_basic_depth_and_caps_page_size():
+    url = "https://x/1"
+    client = FakeSearchClient(pages={url: "a" * 50})
+
+    texts = build_reader(client=client, max_chars=10)([url])
+
+    assert texts == {url: "a" * 10}
+    _urls, kwargs = client.extract_calls[0]
+    assert kwargs["extract_depth"] == "basic"
+
+
+def test_reader_leaves_out_pages_it_could_not_fetch():
+    client = FakeSearchClient(pages={})
+
+    assert build_reader(client=client)(["https://blocked"]) == {}
